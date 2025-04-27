@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serpentine - Leaderboard</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Orbitron:wght@700&display=swap">
+    <style>
+        :root {
+            --primary: #2a9d8f;
+            --primary-dark: #264653;
+            --secondary: #e9c46a;
+            --accent: #f4a261;
+            --error: #e76f51;
+            --background: #121212;
+            --card-bg: #1e1e1e;
+            --text: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(233, 196, 106, 0.3);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        .leaderboard-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaderboard-header {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            padding: 1.5rem 2rem;
+            background-color: var(--primary-dark);
+            font-weight: 600;
+            color: var(--secondary);
+        }
+
+        .player-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            padding: 1.2rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .player-row:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+            transform: translateY(-2px);
+        }
+
+        .player-row:last-child {
+            border-bottom: none;
+        }
+
+        .rank {
+            font-weight: 700;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+        }
+
+        .rank-badge {
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            border-radius: 50%;
+            font-weight: 700;
+        }
+
+        .rank-1 {
+            background-color: gold;
+            color: #000;
+        }
+
+        .rank-2 {
+            background-color: silver;
+            color: #000;
+        }
+
+        .rank-3 {
+            background-color: #cd7f32;
+            color: #000;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-name {
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .player-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .player-score {
+            text-align: right;
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+
+        .status-bar {
+            padding: 1.5rem 2rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .last-updated {
+            color: var(--text-muted);
+        }
+
+        .refresh-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            padding: 2rem;
+            text-align: center;
+            color: var(--secondary);
+        }
+
+        .error {
+            padding: 2rem;
+            text-align: center;
+            color: var(--error);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .leaderboard-header, .player-row {
+                grid-template-columns: 50px 1fr 80px;
+                padding: 1rem;
+            }
+            
+            .rank-badge {
+                width: 25px;
+                height: 25px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">SERPENTINE</h1>
+            <p class="subtitle">Global Leaderboard</p>
+        </header>
+
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <div>Rank</div>
+                <div>Player</div>
+                <div class="score">Score</div>
+            </div>
+            
+            <div id="leaderboard-content">
+                <div class="loading">Loading leaderboard data...</div>
+            </div>
+            
+            <div class="status-bar">
+                <div class="last-updated" id="last-updated">Never updated</div>
+                <button class="refresh-btn" id="refresh-btn">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       // Particle Photon configuration
+const deviceId = "0a10aced202194944a057b98";
+const accessToken = "d1732b075bcd6f6f29025ea960d2c3422005a7a7";
+const cloudVarName = "leaderboardData";
+
+// DOM elements and initialization
+const leaderboardContent = document.getElementById('leaderboardContent');
+const lastUpdatedEl = document.getElementById('lastUpdated');
+const refreshBtn = document.getElementById('refreshBtn');
+const LOCAL_STORAGE_KEY = "spaceBlastersLeaderboard";
+let leaderboardData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
+
+// Data validation
+function validateLeaderboardData(data) {
+    if (!Array.isArray(data)) return false;
+    return data.every(item => 
+        item.hasOwnProperty('name') && 
+        item.hasOwnProperty('score') &&
+        item.hasOwnProperty('time')
+    );
+}
+
+// Fetch data from Particle Cloud
+async function fetchCloudVariable() {
+    try {
+        const response = await fetch(
+            `https://api.particle.io/v1/devices/${deviceId}/${cloudVarName}?access_token=${accessToken}`,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        const parsed = JSON.parse(data.result);
+        
+        if (!validateLeaderboardData(parsed)) {
+            throw new Error("Invalid data format");
+        }
+        
+        return parsed;
+    } catch (error) {
+        console.error("Fetch error:", error);
+        return null;
+    }
+}
+
+// Real-time updates
+function setupEventListeners() {
+    const eventSource = new EventSource(
+        `https://api.particle.io/v1/devices/events?access_token=${accessToken}`
+    );
+
+    eventSource.addEventListener("leaderboard_update", (event) => {
+        try {
+            const newData = JSON.parse(event.data);
+            if (!validateLeaderboardData(newData)) return;
+            
+            leaderboardData = mergeLeaderboardData(leaderboardData, newData);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leaderboardData));
+            displayLeaderboard(leaderboardData);
+            lastUpdatedEl.textContent = `Live update: ${new Date().toLocaleString()}`;
+        } catch (e) {
+            console.error("Event parse error:", e);
+        }
+    });
+
+    eventSource.onerror = () => {
+        console.warn("EventSource error - reconnecting...");
+        setTimeout(setupEventListeners, 5000);
+    };
+}
+
+// Initialize
+updateLeaderboard();
+setupEventListeners();
+</script>
+</body>
+</html>
