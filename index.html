@@ -281,6 +281,8 @@ function mergeLeaderboardData(existing, updates) {
 
 // Display the leaderboard nicely
 function displayLeaderboard(data) {
+    const leaderboardContent = document.getElementById('leaderboard-content');
+    
     if (data.length === 0) {
         leaderboardContent.innerHTML = '<div class="loading">No players yet. 🚀</div>';
         return;
