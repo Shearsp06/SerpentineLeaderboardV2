@@ -233,60 +233,52 @@
 
     <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Particle Photon configuration
     const deviceId = "0a10aced202194944a057b98";
-    const accessToken = "9fb7e68e576406c76c226881b1b5c0192ca19ec7"; // Consider securing this!
+    const accessToken = "d1732b075bcd6f6f29025ea960d2c3422005a7a7"; // Secure this later!
     const cloudVarName = "leaderboardData";
 
-    // DOM elements
     const leaderboardContent = document.getElementById('leaderboard-content');
     const lastUpdatedEl = document.getElementById('last-updated');
     const refreshBtn = document.getElementById('refresh-btn');
     const LOCAL_STORAGE_KEY = "spaceBlastersLeaderboard";
     let leaderboardData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || [];
 
-    // Function definitions
     function validateLeaderboardData(data) {
         if (!Array.isArray(data)) {
             console.error("Data is not an array");
             return false;
         }
-        return data.every(item => {
-            const isValid = item.hasOwnProperty('name') && 
-                           item.hasOwnProperty('score') &&
-                           item.hasOwnProperty('time');
-            if (!isValid) console.error("Invalid item format:", item);
-            return isValid;
-        });
+        return data.every(item => item.hasOwnProperty('name') && item.hasOwnProperty('score') && item.hasOwnProperty('time'));
     }
 
     async function fetchCloudVariable() {
         try {
             const response = await fetch(
-                `https://api.particle.io/v1/devices/${deviceId}/${cloudVarName}?access_token=${accessToken}`,
+                `https://api.particle.io/v1/devices/${deviceId}/${cloudVarName}`,
                 {
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
                     }
                 }
             );
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (!data.result) {
                 throw new Error("No data returned from device");
             }
-            
+
             const parsed = JSON.parse(data.result);
-            
+
             if (!validateLeaderboardData(parsed)) {
                 throw new Error("Invalid data format");
             }
-            
+
             return parsed;
         } catch (error) {
             console.error("Fetch error:", error);
@@ -297,9 +289,9 @@ document.addEventListener('DOMContentLoaded', function() {
     async function updateLeaderboard() {
         try {
             leaderboardContent.innerHTML = '<div class="loading">Updating leaderboard...</div>';
-            
+
             const cloudData = await fetchCloudVariable();
-            
+
             if (cloudData) {
                 leaderboardData = mergeLeaderboardData(leaderboardData, cloudData);
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leaderboardData));
@@ -334,16 +326,16 @@ document.addEventListener('DOMContentLoaded', function() {
             leaderboardContent.innerHTML = '<div class="loading">No scores yet. Be the first!</div>';
             return;
         }
-        
+
         let html = '';
         players.forEach((player, index) => {
             const rank = index + 1;
             let medal = '';
-            
+
             if (rank === 1) medal = '🥇';
             else if (rank === 2) medal = '🥈';
             else if (rank === 3) medal = '🥉';
-            
+
             html += `
                 <div class="player-row">
                     <div class="rank">${rank} ${medal}</div>
@@ -355,45 +347,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
         });
-        
+
         leaderboardContent.innerHTML = html;
     }
 
     function setupEventListeners() {
-        // Button click event
         refreshBtn.addEventListener('click', updateLeaderboard);
-        
-        // Particle event source
-        const eventSource = new EventSource(
-            `https://api.particle.io/v1/devices/events?access_token=${accessToken}`
-        );
 
-        eventSource.addEventListener("leaderboard_update", (event) => {
+        // Replacing EventSource with Particle's JS SDK
+        subscribeToEvents();
+    }
+
+    function subscribeToEvents() {
+        const eventStreamUrl = `https://api.particle.io/v1/devices/${deviceId}/events/leaderboard_update`;
+
+        const evtSource = new EventSource(eventStreamUrl + `?access_token=${accessToken}`);
+
+        evtSource.addEventListener("message", function(event) {
             try {
-                const newData = JSON.parse(event.data);
-                console.log("New data received:", newData); // Debug log
-                
+                const eventData = JSON.parse(event.data);
+                const newData = JSON.parse(eventData.data);
+
+                console.log("Live event data:", newData);
+
                 if (!validateLeaderboardData(newData)) {
-                    console.error("Invalid data format received");
+                    console.error("Invalid event data format");
                     return;
                 }
-                
+
                 leaderboardData = mergeLeaderboardData(leaderboardData, newData);
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leaderboardData));
                 displayLeaderboard(leaderboardData);
                 lastUpdatedEl.textContent = `Live update: ${new Date().toLocaleString()}`;
             } catch (e) {
-                console.error("Event parse error:", e);
+                console.error("Event data parse error:", e);
             }
         });
 
-        eventSource.onerror = (err) => {
+        evtSource.onerror = function(err) {
             console.error("EventSource error:", err);
-            setTimeout(setupEventListeners, 5000); // Reconnect after 5 seconds
+            setTimeout(() => {
+                console.log("Reconnecting EventSource...");
+                subscribeToEvents();
+            }, 5000);
         };
     }
 
-    // Initialize
+    // Init
     setupEventListeners();
     updateLeaderboard();
     setInterval(updateLeaderboard, 5 * 60 * 1000); // Refresh every 5 minutes
